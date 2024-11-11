@@ -1,60 +1,72 @@
 // URLs for current and historical data
-let currentRateUrl = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
-let historicalRateUrl = "https://economia.awesomeapi.com.br/json/daily/USD-BRL/8"; // Hypothetical URL for historical data
+const CURRENT_RATE_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL";
+const HISTORICAL_RATE_URL = "https://economia.awesomeapi.com.br/json/daily/USD-BRL/8"; // Hypothetical URL for historical data
+
+// Constants
+const SALARY = 1111; // Base salary
+const RATE_ADJUSTMENT = 0.98; // Adjustment factor (98%)
+const REFRESH_INTERVAL = 60 * 60; // 1 hour in seconds for widget refresh
+
+// Function to fetch JSON data from a given URL
+async function fetchJSON(url) {
+  let request = new Request(url);
+  return await request.loadJSON();
+}
 
 // Fetch the current USD-BRL exchange rate
-let request = new Request(currentRateUrl);
-let data = await request.loadJSON();
-let currentDollarRate = parseFloat(data["USDBRL"].bid);
+let currentData = await fetchJSON(CURRENT_RATE_URL);
+let currentRate = parseFloat(currentData.USDBRL.bid);
 
-// Attempt to fetch the historical rate from one week ago
-let historicalRequest = new Request(historicalRateUrl);
-let historicalData = await historicalRequest.loadJSON();
-let historicalDollarRate = parseFloat(historicalData[7].bid); // Adjust based on the API response structure
+// Fetch historical data (1 week ago)
+let historicalData = await fetchJSON(HISTORICAL_RATE_URL);
+let historicalRate = parseFloat(historicalData[7].bid); // 7 days ago
 
-// Calculate the adjusted main value (98% of current rate times 1111)
-let salary = 1111;
-let adjustedRate = (currentDollarRate * 0.98) * salary;
-let formattedAdjustedRate = adjustedRate.toFixed(2); // Adjusted value still in 2 decimal places
+// Calculate adjusted salary
+let adjustedSalary = (currentRate * RATE_ADJUSTMENT * SALARY).toFixed(2);
 
-// Calculate the change from one week ago (as a percentage)
-let rateChange = ((currentDollarRate - historicalDollarRate) / historicalDollarRate * 100).toFixed(2);
+// Calculate percentage change from 1 week ago
+let rateChange = (((currentRate - historicalRate) / historicalRate) * 100).toFixed(2);
 let rateChangeText = rateChange >= 0 ? `+${rateChange}%` : `${rateChange}%`;
 
-// Set up the widget
+// Create widget
 let widget = new ListWidget();
 widget.backgroundColor = new Color("#ffffff");
 
-// Main info: Adjusted dollar value
+// Display adjusted salary
 let salaryLabel = widget.addText("Salary:");
-salaryLabel.font = Font.systemFont(12);
-salaryLabel.textColor = Color.gray();
-let mainValueText = widget.addText("R$ " + formattedAdjustedRate);
-mainValueText.font = Font.boldSystemFont(18);
-mainValueText.textColor = Color.green();
+styleText(salaryLabel, Font.systemFont(12), Color.gray());
+let salaryValue = widget.addText(`R$ ${adjustedSalary}`);
+styleText(salaryValue, Font.boldSystemFont(18), Color.green());
 widget.addSpacer(10);
 
-// Current dollar rate with 4 decimals
-let currentRateText = widget.addText("Now: R$ " + currentDollarRate.toFixed(4));
-currentRateText.font = Font.systemFont(12);
-currentRateText.textColor = Color.gray();
+// Display current rate
+let currentRateText = widget.addText(`Now: R$ ${currentRate.toFixed(4)}`);
+styleText(currentRateText, Font.systemFont(12), Color.gray());
 widget.addSpacer(5);
 
-// Historical rate with 4 decimals and comparison
-let historicalRateText = widget.addText(`1w Ago: R$ ${historicalDollarRate.toFixed(4)} (${rateChangeText})`);
-historicalRateText.font = Font.systemFont(10);
-historicalRateText.textColor = rateChange >= 0 ? Color.red() : Color.green();
+// Display historical rate with change percentage
+let historicalRateText = widget.addText(`1w Ago: R$ ${historicalRate.toFixed(4)} (${rateChangeText})`);
+let rateChangeColor = rateChange >= 0 ? Color.red() : Color.green();
+styleText(historicalRateText, Font.systemFont(10), rateChangeColor);
 widget.addSpacer(20);
 
-// Display the last updated time
-let updateText = widget.addText("Updated: " + new Date().toLocaleTimeString());
-updateText.font = Font.systemFont(10);
-updateText.textColor = Color.gray();
+// Display last updated time
+let updatedTimeText = widget.addText(`Updated: ${new Date().toLocaleTimeString()}`);
+styleText(updatedTimeText, Font.systemFont(10), Color.gray());
 
-// Finalize the widget
+// Set widget refresh interval
+widget.refreshAfterDate = new Date(Date.now() + REFRESH_INTERVAL * 1000);
+
+// Present widget
 if (config.runsInWidget) {
   Script.setWidget(widget);
 } else {
   widget.presentMedium();
 }
 Script.complete();
+
+// Helper function to style text elements
+function styleText(element, font, color) {
+  element.font = font;
+  element.textColor = color;
+}
